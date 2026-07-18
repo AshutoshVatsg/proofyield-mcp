@@ -1,0 +1,12 @@
+{
+  "chainId": 84532,
+  "network": "base-sepolia",
+  "contract": "MockYieldVault",
+  "address": "0xFE681843b29d7eB197F3187B1e6fa228B09A21d7",
+  "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+  "deployer": "0x30D48957863b3D6d189fb8aD74caEcF5F160535E",
+  "transactionHash": "0xdb54ea8b322896082df4644924826e909061620bc3a95b00da055ca1fd33b3b6",
+  "blockNumber": 44293810,
+  "deploymentTool": "Foundry 1.7.1",
+  "intendedUse": "Testnet-only controlled hackathon demonstration"
+}

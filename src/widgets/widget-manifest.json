@@ -1,0 +1,24 @@
+{
+  "version": "1.0.0",
+  "widgets": [
+    {
+      "uri": "/proofyield-dashboard",
+      "name": "ProofYield Treasury Console",
+      "description": "Connect a testnet wallet, research allowlisted yield opportunities, inspect policy reasoning, simulate, sign, verify, and monitor a bounded plan.",
+      "examples": [
+        {
+          "name": "Base Sepolia research",
+          "description": "Opens the testnet treasury workflow with manual wallet approval.",
+          "data": {
+            "product": "ProofYield",
+            "environment": "testnet-only",
+            "defaultChainId": 84532,
+            "approvalMode": "wallet-signature"
+          }
+        }
+      ],
+      "tags": ["defi", "treasury", "mcp", "testnet", "fintech"]
+    }
+  ],
+  "generatedAt": "2026-07-18T00:00:00.000Z"
+}

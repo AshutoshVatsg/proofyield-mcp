@@ -1,0 +1,12 @@
+.env
+node_modules/
+src/widgets/node_modules/
+.nitrostudio/
+src/widgets/.next/
+src/widgets/out/
+src/widgets/tsconfig.tsbuildinfo
+data/
+.tools/
+cache/
+out/
+broadcast/

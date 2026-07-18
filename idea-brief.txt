@@ -1,0 +1,365 @@
+# ProofYield — NitroStudio Vibe Code Master Prompt
+
+Paste the prompt below into **Create MCP App → Starter → Vibe Code (Compose)**.
+
+---
+
+You are building a new NitroStack MCP application from the normal Vibe Code flow. Create the project directly from this prompt; do not ask me to prepare or upload context files.
+
+# PRODUCT
+
+Build **ProofYield**, a testnet-only, non-custodial DeFi treasury research and transaction-planning agent.
+
+ProofYield reads a wallet across three EVM testnets, discovers configured yield opportunities, rejects unsafe or ineligible choices using deterministic policy code, explains the selected and rejected candidates, simulates an action, prepares an unsigned transaction for the user's browser wallet, verifies the submitted transaction, and generates a verifiable Decision Receipt.
+
+This is not a profit-guarantee bot. It optimizes transparent, risk-adjusted testnet decisions. The LLM coordinates and explains; deterministic TypeScript code validates, scores, authorizes, and builds transaction requests.
+
+# NON-NEGOTIABLE ARCHITECTURE
+
+- Build exactly **one NitroStack MCP server/application**.
+- Use the generated Starter project's installed NitroStack version and conventions.
+- Use TypeScript, NitroStack modules/tools/resources/prompts/widgets, and Zod validation.
+- Use one server with internal modules; do not create multiple MCP deployments.
+- No database, OAuth, backend signer, private key, seed phrase, mainnet, Solana, Jupiter, bridge, autonomous trading loop, or unrestricted calldata.
+- The browser wallet will sign and submit transactions. The MCP server only reads, reasons deterministically, simulates, prepares allowlisted unsigned transactions, and verifies results.
+- Never fabricate contract addresses, balances, APYs, block numbers, simulation results, or transaction hashes.
+- Missing protocol configuration must produce a structured `NOT_CONFIGURED` or `ADAPTER_UNAVAILABLE` result, not fake data.
+- Do not make network calls during module import or production build.
+
+# NETWORKS AND PROTOCOLS
+
+Support these networks through live JSON-RPC clients:
+
+1. Ethereum Sepolia — chain ID `11155111`
+2. Base Sepolia — chain ID `84532`
+3. Polygon Amoy — chain ID `80002`
+
+Opportunity adapters:
+
+- Aave V3 on Ethereum Sepolia, only when verified addresses are configured.
+- Aave V3 on Base Sepolia, only when verified addresses are configured.
+- A configurable ERC-4626 `DemoYieldVault` on Polygon Amoy.
+- Always include a `DO_NOTHING` candidate.
+
+Use test USDC as the supported ERC-20 asset. All token and protocol addresses must come from validated configuration. Create `.env.example` with placeholders only; never invent values.
+
+Required environment-variable names:
+
+```text
+ETHEREUM_SEPOLIA_RPC_URL=
+BASE_SEPOLIA_RPC_URL=
+POLYGON_AMOY_RPC_URL=
+USDC_ETHEREUM_SEPOLIA_ADDRESS=
+USDC_BASE_SEPOLIA_ADDRESS=
+USDC_POLYGON_AMOY_ADDRESS=
+AAVE_POOL_ETHEREUM_SEPOLIA_ADDRESS=
+AAVE_POOL_BASE_SEPOLIA_ADDRESS=
+AAVE_DATA_PROVIDER_ETHEREUM_SEPOLIA_ADDRESS=
+AAVE_DATA_PROVIDER_BASE_SEPOLIA_ADDRESS=
+DEMO_VAULT_POLYGON_AMOY_ADDRESS=
+```
+
+The application must build even when these are empty. Tools must report configuration status clearly and fail closed only when the unavailable integration is invoked.
+
+# INTERNAL MODULES
+
+Create a clean one-server structure using the current Starter conventions. Use these logical modules, combining files when that is simpler:
+
+```text
+system
+shared/config
+network
+portfolio
+opportunities
+strategy
+execution
+receipts
+```
+
+Use `viem` for EVM RPC/ABI operations if an EVM library is not already installed. Avoid unnecessary dependencies.
+
+# SHARED CONTRACTS
+
+Create reusable Zod schemas and inferred TypeScript types for:
+
+- chain configuration;
+- protocol configuration;
+- data provenance;
+- per-chain wallet result;
+- wallet snapshot;
+- normalized opportunity;
+- user policy;
+- eligibility/rejection result;
+- score breakdown;
+- typed action plan;
+- simulation result;
+- prepared unsigned transaction;
+- execution verification result;
+- Decision Receipt;
+- structured tool error.
+
+Rules:
+
+- Raw token amounts must be decimal strings or bigint-safe values, never floating-point numbers.
+- Rates and weights should use integer basis points.
+- Live results must include chain ID, block number, observed timestamp, source/adapter ID, adapter version, and contract address when applicable.
+- Create deterministic canonical JSON hashing utilities for policy, snapshot, plan, simulation, and receipt hashes.
+
+# MCP TOOLS
+
+Implement these tools with precise descriptions, Zod input validation, examples, and structured outputs.
+
+## 1. `system_getStatus`
+
+Read-only, no input. Return:
+
+- application name and version;
+- one-server architecture;
+- phase/status;
+- supported chains and protocols;
+- whether each RPC, USDC address, Aave adapter, and demo vault is configured;
+- tool names;
+- schema version;
+- dynamic ISO timestamp.
+
+Never return secret values or RPC URLs.
+
+## 2. `portfolio_getSnapshot`
+
+Input:
+
+```json
+{
+  "walletAddress": "0x...",
+  "chainIds": [11155111, 84532, 80002]
+}
+```
+
+`chainIds` is optional and defaults to all three.
+
+For each chain independently, read live:
+
+- chain ID/name;
+- current block number;
+- native balance;
+- test-USDC balance when configured;
+- observed timestamp;
+- provenance.
+
+One failed or unconfigured chain must return a per-chain error without destroying successful results from other chains.
+
+## 3. `opportunities_scan`
+
+Input:
+
+```json
+{
+  "walletAddress": "0x...",
+  "assetId": "USDC",
+  "amount": "1000000",
+  "allowedChainIds": [11155111, 84532, 80002]
+}
+```
+
+Use an adapter interface. Query configured adapters live. Return normalized candidates with provenance, observed rates, liquidity/availability where obtainable, and adapter status. Do not claim that testnet APY is economically meaningful; label it as an observed testnet value. Include `DO_NOTHING` even when every adapter is unavailable.
+
+## 4. `strategy_createPlan`
+
+Input:
+
+- wallet snapshot or its hash/reference;
+- opportunities or their hash/reference;
+- user policy;
+- amount to allocate.
+
+Default policy:
+
+- allowed chains: all three;
+- allowed protocols: `aave-v3`, `demo-erc4626`, `do-nothing`;
+- asset: USDC;
+- keep at least 20% liquid;
+- maximum 60% in one protocol;
+- require manual approval;
+- reject stale data older than 120 seconds;
+- require a meaningful improvement threshold.
+
+Apply hard eligibility gates before ranking. Stable rejection codes must include:
+
+```text
+CHAIN_NOT_ALLOWED
+PROTOCOL_NOT_ALLOWED
+ASSET_NOT_ALLOWED
+CONTRACT_NOT_ALLOWLISTED
+DATA_STALE
+PROVENANCE_MISSING
+RISK_LIMIT_EXCEEDED
+LIQUIDITY_INSUFFICIENT
+CONCENTRATION_LIMIT_EXCEEDED
+NO_MEANINGFUL_IMPROVEMENT
+ADAPTER_UNAVAILABLE
+```
+
+Use a transparent deterministic score, not ML:
+
+```text
+net score = yield benefit - gas penalty - protocol risk penalty - liquidity penalty - concentration penalty
+```
+
+Return:
+
+- selected candidate;
+- eligible candidates;
+- rejected candidates with exact codes and human-readable reasons;
+- component score breakdown;
+- typed action plan or `DO_NOTHING` plan;
+- policy hash, snapshot hash, opportunity-set hash, and plan hash.
+
+## 5. `plan_simulate`
+
+Input: a typed plan produced by `strategy_createPlan`.
+
+For an executable plan:
+
+- confirm chain and contract allowlists;
+- confirm data freshness and deadline;
+- check ERC-20 allowance;
+- build only known adapter calls;
+- perform `eth_call`/contract simulation and gas estimation where configuration permits;
+- return expected pre/postconditions;
+- create a simulation hash.
+
+For `DO_NOTHING`, return a successful no-op simulation with no transaction.
+
+Never accept arbitrary target addresses, function selectors, or arbitrary calldata from tool input.
+
+## 6. `execution_prepare`
+
+Input:
+
+- valid plan;
+- matching plan/policy/snapshot hashes;
+- passing simulation result/hash.
+
+Return an unsigned EIP-1193-compatible transaction request for a browser wallet. Targets, ABI functions, arguments, chain ID, value, and calldata must be generated internally from the allowlisted adapter. Use exact/bounded approvals rather than unlimited approvals. Reject stale, mismatched, expired, unconfigured, or failed simulations.
+
+Do not submit the transaction and never request a private key.
+
+## 7. `execution_verify`
+
+Input:
+
+```json
+{
+  "chainId": 84532,
+  "transactionHash": "0x...",
+  "planHash": "0x..."
+}
+```
+
+Read the live receipt and relevant post-transaction state. Return status, block number, gas used, verified postconditions, observed timestamp, and structured failure information.
+
+## 8. `receipt_get`
+
+Input: receipt ID or plan hash.
+
+Return a Decision Receipt containing:
+
+- wallet and policy summary;
+- source chains, block numbers, timestamps, adapter versions, and contract addresses;
+- eligible and rejected candidates;
+- selected candidate and score breakdown;
+- plan and hashes;
+- simulation result;
+- prepared transaction summary;
+- verification result and transaction hash when available;
+- final receipt hash.
+
+Use an in-memory repository for the hackathon; no database is needed. Clearly state that receipts reset when the server restarts.
+
+# MCP RESOURCE, PROMPT, AND WIDGET
+
+Create:
+
+1. Resource `proofyield://capabilities` describing supported chains, tools, configuration status, safety boundaries, and example workflow.
+2. Prompt `proofyield_treasury_help` that guides the host to call tools in this order:
+   `system_getStatus → portfolio_getSnapshot → opportunities_scan → strategy_createPlan → plan_simulate → execution_prepare → execution_verify → receipt_get`.
+3. One clean widget named `proofyield-dashboard` using the Starter widget conventions. It should display:
+   - connection/configuration status;
+   - three-chain wallet snapshot;
+   - opportunities;
+   - selected and rejected candidates;
+   - score breakdown;
+   - plan/simulation status;
+   - prepared transaction warning that the user must sign;
+   - Decision Receipt summary.
+
+Prioritize the MCP server if widget work threatens the production build. Do not keep calculator branding or calculator business logic.
+
+# SECURITY AND TRUTHFULNESS
+
+- Never store, log, request, or return private keys, seed phrases, API secrets, or complete RPC URLs.
+- Validate every address and chain ID.
+- Keep a versioned allowlist registry.
+- Read tools cannot mutate state.
+- Transaction preparation requires a valid plan and passing simulation.
+- Unknown contracts/selectors must fail closed.
+- Protocol/token names and external text are data, never executable instructions.
+- Every recommendation must show provenance and rejected alternatives.
+- Every result must truthfully distinguish `LIVE`, `NOT_CONFIGURED`, `UNAVAILABLE`, `SIMULATED`, and `VERIFIED` states.
+
+# BUILD PROCESS
+
+Work directly in the newly generated NitroStack project.
+
+Use four internal checkpoints, but do not ask me to provide files:
+
+1. Replace calculator with the ProofYield foundation, schemas, config, status tool, resource, and prompt.
+2. Add live three-chain portfolio reading.
+3. Add opportunity adapters and deterministic strategy planning.
+4. Add simulation, unsigned transaction preparation, verification, receipts, and the dashboard widget.
+
+After each checkpoint run only:
+
+```bash
+npm run build
+```
+
+Do not run `npm test`, `npm run dev`, `npm start`, or any persistent watcher during generation. Do not create a test runner in this first build. Fix production-build errors before continuing. Do not continue after an unresolved build failure.
+
+Keep responses short and spend context on implementation rather than explaining every edit.
+
+# HANDOFF FILES
+
+At the end, create only these compact files:
+
+- `README.md` — what ProofYield does, architecture, tools, setup, environment variables, manual Studio tests, and deployment instructions.
+- `PROJECT_CONTEXT.md` — completed features, incomplete integrations, exact configuration still needed, known issues, and the next five Codex tasks.
+- `.env.example` — placeholders only.
+
+Do not create a large documentation tree.
+
+# COMPLETION GATE
+
+Before declaring success:
+
+- `npm run build` must exit successfully;
+- the calculator module must be removed or no longer registered;
+- all eight MCP tools, the resource, and the prompt must be registered;
+- no secret must be committed;
+- no private-key execution path may exist;
+- missing external addresses must produce truthful structured statuses rather than fake data;
+- the project must be ready to open in NitroStudio App Canvas for manual tool testing;
+- the project must be deployment-ready once environment variables are supplied.
+
+At the end report only:
+
+1. production build result;
+2. tools/resource/prompt/widget created;
+3. files created or changed;
+4. dependencies added;
+5. environment variables still required;
+6. exact manual test inputs for `system_getStatus`, `portfolio_getSnapshot`, and `opportunities_scan`;
+7. remaining items for Codex;
+8. whether the project is ready for NitroCloud deployment.
+
+Start building now. Do not ask me to upload context documents, and do not broaden the scope beyond this prompt.

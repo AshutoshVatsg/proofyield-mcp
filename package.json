@@ -1,0 +1,42 @@
+{
+  "name": "proofyield",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Policy-bounded, explainable DeFi treasury research and testnet execution over MCP.",
+  "scripts": {
+    "dev": "node scripts/dev-browser.mjs",
+    "dev:studio": "nitrostack-cli dev",
+    "build": "nitrostack-cli build",
+    "typecheck": "tsc --noEmit && npm --prefix src/widgets exec tsc -- --noEmit",
+    "test": "npm run build && node --test --test-force-exit tests/*.test.mjs",
+    "check": "npm run typecheck && npm test",
+    "smoke:live": "npm run build && node scripts/live-smoke.mjs",
+    "start": "npm run build && nitrostack-cli start",
+    "start:prod": "nitrostack-cli start",
+    "upgrade": "nitrostack-cli upgrade",
+    "install:all": "nitrostack-cli install",
+    "widget": "npm --prefix src/widgets"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/ext-apps": ">=0.1.0",
+    "@nitrostack/core": "^1.0.13",
+    "dotenv": "^16.3.1",
+    "viem": "^2.55.2",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@nitrostack/cli": "^1.0.14",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.3.3"
+  },
+  "overrides": {
+    "@nitrostack/cli": {
+      "esbuild": "0.25.12"
+    }
+  },
+  "author": "ProofYield team",
+  "nitrostack": {
+    "skillsVersion": "1.0.0"
+  }
+}
